@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的網頁遊戲合集</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        p.subtitle {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        /* 遊戲列表網格配置 */
+        .game-grid {
+            display: grid;
+            /* 自動排版：螢幕寬時並排，螢幕窄(如手機)時自動往下折 */
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        /* 遊戲卡片樣式 */
+        .game-card {
+            background-color: white;
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-decoration: none; /* 移除超連結底線 */
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        /* 滑鼠移上去的特效 */
+        .game-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
+            border-color: #3498db;
+        }
+
+        .game-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .game-card:hover .game-icon {
+            transform: scale(1.1);
+        }
+
+        .game-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+        }
+
+        .game-desc {
+            font-size: 14px;
+            color: #95a5a6;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* 第一個遊戲特別標示 */
+        .featured {
+            border: 2px solid #f1c40f;
+            background: linear-gradient(to bottom right, #fff, #fffdf0);
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>🎮 我的網頁遊戲合集</h1>
+    <p class="subtitle">點擊下方卡片，立刻開始遊玩！</p>
+
+    <div class="game-grid">
+        <!-- 遊戲 1 (Gemini版) -->
+        <!-- 注意：請確保你的 Gemini 版檔案命名為 flappy-gemini.html -->
+        <a href="flappy-gemini.html" class="game-card featured">
+            <div class="game-icon">🐦</div>
+            <h2 class="game-title">小鳥避牆-Gemini版</h2>
+            <p class="game-desc">由 Gemini 協助開發，包含5階動態難度與多種重力選擇！</p>
+        </a>
+
+        <!-- 遊戲 2 (ChatGPT版) -->
+        <!-- 注意：請確保你的 ChatGPT 版檔案命名為 flappy-chatgpt.html -->
+        <a href="flappy-chatgpt.html" class="game-card featured">
+            <div class="game-icon">🐥</div>
+            <h2 class="game-title">小鳥避牆-ChatGPT版</h2>
+            <p class="game-desc">由 ChatGPT 協助開發，來體驗看看不同 AI 生成的遊戲風格吧！</p>
+        </a>
+
+        <!-- 遊戲 3 -->
+        <a href="game3.html" class="game-card">
+            <div class="game-icon">🧱</div>
+            <h2 class="game-title">打磚塊 (開發中)</h2>
+            <p class="game-desc">經典的彈跳打磚塊遊戲，即將推出。</p>
+        </a>
+
+        <!-- 遊戲 4 -->
+        <a href="game4.html" class="game-card">
+            <div class="game-icon">🐍</div>
+            <h2 class="game-title">貪吃蛇 (開發中)</h2>
+            <p class="game-desc">吃掉蘋果讓自己變長，小心不要咬到自己！</p>
+        </a>
+
+        <!-- 遊戲 5 -->
+        <a href="game5.html" class="game-card">
+            <div class="game-icon">🧩</div>
+            <h2 class="game-title">2048 (開發中)</h2>
+            <p class="game-desc">滑動方塊湊出 2048，挑戰你的大腦極限。</p>
+        </a>
+
+        <!-- 遊戲 6 -->
+        <a href="game6.html" class="game-card">
+            <div class="game-icon">👾</div>
+            <h2 class="game-title">太空侵略者 (開發中)</h2>
+            <p class="game-desc">駕駛戰機，消滅從天而降的外星敵人！</p>
+        </a>
+    </div>
+
+</body>
+</html>
