@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>鳥頭打氣球 (打磚塊)</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 100%;
+            max-height: 800px;
+            background-color: #87CEEB; /* 天空藍背景 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hud {
+            position: absolute;
+            top: 15px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 0px #333;
+            z-index: 10;
+        }
+
+        .screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border: 4px solid #34495e;
+            border-radius: 20px;
+            pointer-events: auto;
+            text-align: center;
+            box-shadow: 0 8px 0 #34495e;
+            width: 80%;
+            max-width: 350px;
+        }
+
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 28px;
+            color: #e74c3c;
+        }
+
+        p {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            background-color: #3498db;
+            color: white;
+            border: 3px solid #2980b9;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 5px 0 #2980b9;
+        }
+
+        button:active {
+            transform: translateY(5px);
+            box-shadow: 0 0px 0 #2980b9;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* 回首頁按鈕 */
+        #home-btn {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            padding: 8px 15px;
+            font-size: 14px;
+            background-color: #95a5a6;
+            border: 2px solid #7f8c8d;
+            box-shadow: 0 3px 0 #7f8c8d;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <div class="hud">
+            <div>關卡: <span id="ui-level">1</span>/10</div>
+            <div>生命: <span id="ui-lives">3</span></div>
+        </div>
+        
+        <!-- 狀態畫面 -->
+        <div id="message-screen" class="screen">
+            <h1 id="msg-title">鳥頭打氣球</h1>
+            <p id="msg-desc">移動滑鼠或滑動螢幕控制底部擋板。<br>點擊畫面從底部發射鳥頭！</p>
+            <button id="action-btn">開始遊戲</button>
+        </div>
+
+        <a href="index.html"><button id="home-btn">返回主選單</button></a>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const uiLevel = document.getElementById('ui-level');
+    const uiLives = document.getElementById('ui-lives');
+    const msgScreen = document.getElementById('message-screen');
+    const msgTitle = document.getElementById('msg-title');
+    const msgDesc = document.getElementById('msg-desc');
+    const actionBtn = document.getElementById('action-btn');
+
+    // 關卡設定 (共10關) - 橫向數量增加，第4關開始下降且放慢，第3關起有炸彈
+    const LEVEL_CONFIG = [
+        { rows: 3, cols: 8, ballSpeed: 4.5, dropSpeed: 0, bombChance: 0 },       // Lv 1: 氣球變多，靜止
+        { rows: 4, cols: 9, ballSpeed: 5.0, dropSpeed: 0, bombChance: 0 },       // Lv 2: 靜止
+        { rows: 4, cols: 10, ballSpeed: 5.5, dropSpeed: 0, bombChance: 0.08 },   // Lv 3: 不下降，加入炸彈
+        { rows: 5, cols: 10, ballSpeed: 6.0, dropSpeed: 0.02, bombChance: 0.1 }, // Lv 4: 開始非常緩慢下降
+        { rows: 5, cols: 11, ballSpeed: 6.5, dropSpeed: 0.04, bombChance: 0.12 },// Lv 5: 稍微加速
+        { rows: 6, cols: 11, ballSpeed: 7.0, dropSpeed: 0.06, bombChance: 0.15 },// Lv 6
+        { rows: 6, cols: 12, ballSpeed: 7.5, dropSpeed: 0.08, bombChance: 0.15 },// Lv 7
+        { rows: 7, cols: 12, ballSpeed: 8.0, dropSpeed: 0.1, bombChance: 0.18 }, // Lv 8
+        { rows: 7, cols: 13, ballSpeed: 8.5, dropSpeed: 0.12, bombChance: 0.2 }, // Lv 9
+        { rows: 8, cols: 14, ballSpeed: 9.0, dropSpeed: 0.15, bombChance: 0.2 }  // Lv 10: 極限難度
+    ];
+
+    const balloonColors = ['#e74c3c', '#9b59b6', '#3498db', '#1abc9c', '#f1c40f', '#e67e22'];
+
+    // 遊戲全域狀態
+    let gameState = 'START'; // START, PLAYING, READY, GAMEOVER, VICTORY
+    let currentLevel = 1;
+    let lives = 3;
+    let animationId;
+    let balloons = [];
+    let globalDropOffset = 0; // 氣球群體下降的偏移量
+
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        paddle.y = canvas.height - 40;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- 實體物件定義 ---
+
+    const paddle = {
+        width: 100,
+        height: 15,
+        x: 0,
+        y: 0, // 在 resize 設置
+        color: '#2c3e50',
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.roundRect(this.x, this.y, this.width, this.height, 8);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    };
+
+    const birdBall = {
+        x: 0,
+        y: 0,
+        radius: 12,
+        dx: 0,
+        dy: 0,
+        speed: 0,
+        isAttached: true, // 發射前黏在擋板上
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            // 圓形頭部
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFD700'; // 黃色鳥
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#000';
+            ctx.stroke();
+
+            // 嘴尖朝上 (不受旋轉影響，固定朝上)
+            ctx.beginPath();
+            ctx.moveTo(-this.radius * 0.4, -this.radius * 0.6);
+            ctx.lineTo(this.radius * 0.4, -this.radius * 0.6);
+            ctx.lineTo(0, -this.radius * 1.5); // 突出的嘴
+            ctx.closePath();
+            ctx.fillStyle = '#FF4500';
+            ctx.fill();
+            ctx.stroke();
+
+            // 眼睛
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath(); ctx.arc(-this.radius * 0.35, -this.radius * 0.1, this.radius * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(this.radius * 0.35, -this.radius * 0.1, this.radius * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            
+            // 眼珠
+            ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(-this.radius * 0.35, -this.radius * 0.1, this.radius * 0.15, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(this.radius * 0.35, -this.radius * 0.1, this.radius * 0.15, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+        },
+
+        reset() {
+            this.isAttached = true;
+            this.dx = 0;
+            this.dy = 0;
+        },
+
+        launch(speed) {
+            if (this.isAttached) {
+                this.isAttached = false;
+                this.speed = speed;
+                // 初始隨機微偏角度往上發射
+                let angle = (Math.random() * Math.PI / 4) - (Math.PI / 8); 
+                this.dx = this.speed * Math.sin(angle);
+                this.dy = -this.speed * Math.cos(angle);
+            }
+        },
+
+        update() {
+            if (this.isAttached) {
+                this.x = paddle.x + paddle.width / 2;
+                this.y = paddle.y - this.radius * 1.5; // 放在擋板上 (考慮嘴巴高度)
+                return;
+            }
+
+            this.x += this.dx;
+            this.y += this.dy;
+
+            // 碰到左右牆壁
+            if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
+                this.dx *= -1;
+                this.x = this.x - this.radius < 0 ? this.radius : canvas.width - this.radius;
+            }
+
+            // 碰到天花板
+            if (this.y - this.radius * 1.5 < 0) {
+                this.dy *= -1;
+                this.y = this.radius * 1.5;
+            }
+
+            // 碰到地板 (掉落)
+            if (this.y + this.radius > canvas.height) {
+                handleLifeLost();
+            }
+
+            // 碰到擋板 (AABB結合圓形簡單判定)
+            if (this.dy > 0 && 
+                this.y + this.radius > paddle.y && 
+                this.y - this.radius < paddle.y + paddle.height &&
+                this.x + this.radius > paddle.x && 
+                this.x - this.radius < paddle.x + paddle.width) {
+                
+                // 依據擊中擋板的位置改變反彈角度
+                let hitPoint = this.x - (paddle.x + paddle.width / 2);
+                let normalizedHit = hitPoint / (paddle.width / 2); // -1 到 1
+                
+                // 限制最大反彈角度 (約60度)
+                let bounceAngle = normalizedHit * (Math.PI / 3);
+                
+                this.dx = this.speed * Math.sin(bounceAngle);
+                this.dy = -this.speed * Math.cos(bounceAngle);
+                this.y = paddle.y - this.radius; // 避免卡在擋板內
+            }
+        }
+    };
+
+    // --- 氣球相關邏輯 ---
+
+    function createBalloons(levelIdx) {
+        balloons = [];
+        globalDropOffset = 0;
+        let config = LEVEL_CONFIG[levelIdx - 1];
+        
+        let padding = 5;
+        let offsetTop = 60;
+        let offsetLeft = 15;
+        // 計算每個氣球的寬度 (因為變為正圓形，所以高寬一致)
+        let w = (canvas.width - offsetLeft * 2 - padding * (config.cols - 1)) / config.cols;
+        let h = w; 
+
+        for (let r = 0; r < config.rows; r++) {
+            let rowColor = balloonColors[r % balloonColors.length];
+            for (let c = 0; c < config.cols; c++) {
+                let bx = offsetLeft + c * (w + padding);
+                let by = offsetTop + r * (h + padding);
+                
+                // 決定這顆氣球是不是炸彈
+                let isBomb = Math.random() < config.bombChance;
+
+                balloons.push({
+                    row: r, // 記錄行號以供炸彈爆炸計算
+                    col: c, // 記錄列號以供炸彈爆炸計算
+                    x: bx,
+                    y: by,
+                    width: w,
+                    height: h,
+                    color: rowColor,
+                    type: isBomb ? 'bomb' : 'normal',
+                    status: 'active', // 'active', 'popping', 'dead'
+                    popTimer: 0
+                });
+            }
+        }
+    }
+
+    function drawBalloon(b) {
+        let actualY = b.y + globalDropOffset;
+        let r = b.width / 2; // 圓形半徑
+        let cx = b.x + r;    // 中心 x
+        let cy = actualY + r; // 中心 y
+
+        if (b.status === 'active') {
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            if (b.type === 'normal') {
+                // 線
+                ctx.beginPath();
+                ctx.moveTo(0, r * 0.8);
+                ctx.lineTo(0, r * 1.8);
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.stroke();
+
+                // 氣球本體 (正圓)
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.fillStyle = b.color;
+                ctx.fill();
+
+                // 高光
+                ctx.beginPath();
+                ctx.arc(-r * 0.3, -r * 0.3, r * 0.2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fill();
+
+                // 結
+                ctx.beginPath();
+                ctx.moveTo(-4, r * 0.9);
+                ctx.lineTo(4, r * 0.9);
+                ctx.lineTo(0, r * 1.2);
+                ctx.fillStyle = b.color;
+                ctx.fill();
+            } else if (b.type === 'bomb') {
+                // 炸彈引線
+                ctx.beginPath();
+                ctx.moveTo(0, -r);
+                ctx.quadraticCurveTo(r*0.5, -r*1.5, r*0.8, -r*1.2);
+                ctx.strokeStyle = '#e67e22';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 火花
+                ctx.beginPath();
+                ctx.arc(r*0.8, -r*1.2, 3, 0, Math.PI*2);
+                ctx.fillStyle = '#f1c40f';
+                ctx.fill();
+
+                // 炸彈本體 (黑圓)
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.fillStyle = '#222';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 炸彈標記 (紅 B)
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = `bold ${r}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('B', 0, 0);
+            }
+
+            ctx.restore();
+        } else if (b.status === 'popping') {
+            // 繪製氣球爆破形狀 (炸裂感)
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.fillStyle = b.type === 'bomb' ? '#e74c3c' : b.color;
+            
+            // 利用計時器製造收縮/擴大效果
+            let scale = 1 + (10 - b.popTimer) * 0.15;
+            if (b.type === 'bomb') scale *= 1.5; // 炸彈特效更大
+            ctx.scale(scale, scale);
+            ctx.globalAlpha = b.popTimer / 10;
+
+            ctx.beginPath();
+            for(let i = 0; i < 8; i++) {
+                ctx.rotate(Math.PI / 4);
+                ctx.moveTo(0, 0);
+                ctx.lineTo(r*0.5, -r*0.2);
+                ctx.lineTo(r*0.8, 0);
+            }
+            ctx.fill();
+            ctx.restore();
+
+            b.popTimer--;
+            if (b.popTimer <= 0) {
+                b.status = 'dead';
+            }
+        }
+    }
+
+    // 觸發擊破邏輯 (包含炸彈連鎖反應)
+    function triggerBalloonPop(targetBalloon) {
+        if (targetBalloon.status !== 'active') return;
+        
+        targetBalloon.status = 'popping';
+        targetBalloon.popTimer = 10;
+        
+        // 如果是炸彈，引爆周遭 2 個半徑範圍的氣球 (縱橫斜)
+        if (targetBalloon.type === 'bomb') {
+            for (let b of balloons) {
+                if (b.status === 'active' && 
+                    Math.abs(b.row - targetBalloon.row) <= 2 && 
+                    Math.abs(b.col - targetBalloon.col) <= 2) {
+                    
+                    // 遞迴呼叫：若炸到另一顆炸彈會產生連鎖反應
+                    triggerBalloonPop(b); 
+                }
+            }
+        }
+    }
+
+    function checkCollision() {
+        let activeBalloons = 0;
+        let config = LEVEL_CONFIG[currentLevel - 1];
+
+        for (let i = 0; i < balloons.length; i++) {
+            let b = balloons[i];
+            
+            if (b.status === 'active') {
+                activeBalloons++;
+                let actualY = b.y + globalDropOffset;
+
+                // 簡單矩形碰撞檢測
+                if (birdBall.x + birdBall.radius > b.x && 
+                    birdBall.x - birdBall.radius < b.x + b.width && 
+                    birdBall.y + birdBall.radius > actualY && 
+                    birdBall.y - birdBall.radius < actualY + b.height) {
+                    
+                    // 決定反彈方向 (判斷是從哪邊撞進去)
+                    let overlapLeft = (birdBall.x + birdBall.radius) - b.x;
+                    let overlapRight = (b.x + b.width) - (birdBall.x - birdBall.radius);
+                    let overlapTop = (birdBall.y + birdBall.radius) - actualY;
+                    let overlapBottom = (actualY + b.height) - (birdBall.y - birdBall.radius);
+                    
+                    let minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+                    
+                    if (minOverlap === overlapLeft || minOverlap === overlapRight) {
+                        birdBall.dx *= -1;
+                    } else {
+                        birdBall.dy *= -1;
+                    }
+
+                    // 改變氣球狀態為爆破 (如果撞到炸彈則觸發引爆)
+                    triggerBalloonPop(b);
+                }
+
+                // 檢查氣球是否下降到底部擋板區 (玩家被壓扁)
+                if (actualY + b.height > paddle.y) {
+                    handleGameOver(false);
+                    return;
+                }
+            }
+        }
+
+        // 全破檢測
+        if (activeBalloons === 0 && balloons.every(b => b.status === 'dead')) {
+            if (currentLevel < 10) {
+                currentLevel++;
+                startLevelSetup();
+            } else {
+                handleGameOver(true);
+            }
+        }
+    }
+
+    // --- 遊戲流程控制 ---
+
+    function handleLifeLost() {
+        lives--;
+        uiLives.innerText = lives;
+        if (lives > 0) {
+            birdBall.reset();
+        } else {
+            handleGameOver(false);
+        }
+    }
+
+    function handleGameOver(isVictory) {
+        gameState = isVictory ? 'VICTORY' : 'GAMEOVER';
+        msgTitle.innerText = isVictory ? '🎉 恭喜通關！' : '遊戲結束';
+        msgDesc.innerText = isVictory ? '你已經打爆所有氣球，守護了天空！' : `你在第 ${currentLevel} 關失敗了。`;
+        actionBtn.innerText = '再玩一次';
+        msgScreen.classList.remove('hidden');
+    }
+
+    function startLevelSetup() {
+        gameState = 'READY';
+        birdBall.reset();
+        createBalloons(currentLevel);
+        uiLevel.innerText = currentLevel;
+        uiLives.innerText = lives;
+        
+        msgTitle.innerText = `第 ${currentLevel} 關`;
+        let config = LEVEL_CONFIG[currentLevel - 1];
+        if (config.dropSpeed > 0) {
+            msgDesc.innerText = '警告：氣球會開始下降！\n點擊畫面發射。';
+        } else {
+            msgDesc.innerText = '點擊畫面發射。';
+        }
+        actionBtn.innerText = '開始挑戰';
+        msgScreen.classList.remove('hidden');
+    }
+
+    function resetFullGame() {
+        currentLevel = 1;
+        lives = 3;
+        startLevelSetup();
+    }
+
+    // --- 渲染與迴圈 ---
+
+    function update() {
+        if (gameState !== 'PLAYING') return;
+
+        // 更新氣球整體下降
+        let config = LEVEL_CONFIG[currentLevel - 1];
+        globalDropOffset += config.dropSpeed;
+
+        birdBall.update();
+        checkCollision();
+    }
+
+    function draw() {
+        // 清理背景
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 畫氣球
+        for (let b of balloons) {
+            drawBalloon(b);
+        }
+
+        // 畫擋板與球
+        paddle.draw();
+        birdBall.draw();
+    }
+
+    function loop() {
+        update();
+        draw();
+        animationId = requestAnimationFrame(loop);
+    }
+
+    // --- 輸入控制 ---
+
+    function handleInputStart() {
+        if (gameState === 'GAMEOVER' || gameState === 'VICTORY') {
+            resetFullGame();
+        } else if (gameState === 'READY' || gameState === 'START') {
+            msgScreen.classList.add('hidden');
+            gameState = 'PLAYING';
+            let config = LEVEL_CONFIG[currentLevel - 1];
+            birdBall.launch(config.ballSpeed);
+        } else if (gameState === 'PLAYING' && birdBall.isAttached) {
+            let config = LEVEL_CONFIG[currentLevel - 1];
+            birdBall.launch(config.ballSpeed);
+        }
+    }
+
+    // 滑鼠與觸控移動控制擋板
+    function movePaddle(e) {
+        if (gameState !== 'PLAYING' && gameState !== 'READY') return;
+        
+        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let rect = canvas.getBoundingClientRect();
+        let mouseX = clientX - rect.left;
+        
+        paddle.x = mouseX - paddle.width / 2;
+        
+        // 邊界限制
+        if (paddle.x < 0) paddle.x = 0;
+        if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+    }
+
+    canvas.addEventListener('mousemove', movePaddle);
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // 防止滾動
+        movePaddle(e);
+    }, { passive: false });
+
+    // 點擊發射 / 開始
+    canvas.addEventListener('mousedown', handleInputStart);
+    canvas.addEventListener('touchstart', (e) => {
+        if(e.target !== document.getElementById('home-btn')) {
+            e.preventDefault();
+            handleInputStart();
+        }
+    }, { passive: false });
+
+    actionBtn.addEventListener('click', handleInputStart);
+
+    // --- 初始化 ---
+    resizeCanvas();
+    paddle.x = canvas.width / 2 - paddle.width / 2;
+    resetFullGame();
+    loop();
+
+</script>
+</body>
+</html>
