@@ -2,11 +2,24 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 確保在手機上呈現正確的比例，不被輕易縮放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- iOS 加入主畫面 (PWA) 專屬設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- 允許全螢幕執行 (隱藏 Safari 網址列) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"> <!-- 頂部狀態列樣式 -->
+    <meta name="apple-mobile-web-app-title" content="我的遊戲"> <!-- 儲存到桌面時的預設 App 名稱 -->
+    <link rel="apple-touch-icon" href="icon.png"> <!-- 桌面小圖示的路徑 -->
+    
+    <!-- 一般瀏覽器標籤圖示 -->
+    <link rel="icon" type="image/png" href="icon.png">
+
     <title>我的網頁遊戲合集</title>
     <style>
         * {
             box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none; /* 禁用長按反白，讓體驗更像 App */
         }
 
         body {
@@ -38,7 +51,6 @@
         /* 遊戲列表網格配置 */
         .game-grid {
             display: grid;
-            /* 自動排版：螢幕寬時並排，螢幕窄(如手機)時自動往下折 */
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 25px;
             width: 100%;
@@ -50,7 +62,7 @@
             background-color: white;
             border-radius: 16px;
             padding: 30px 20px;
-            text-decoration: none; /* 移除超連結底線 */
+            text-decoration: none;
             color: inherit;
             display: flex;
             flex-direction: column;
@@ -59,10 +71,12 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            /* 給所有遊戲統一的漸層質感，看起來都像已完成的特選遊戲 */
+            background: linear-gradient(to bottom right, #ffffff, #fdfdfd);
         }
 
-        /* 滑鼠移上去的特效 */
-        .game-card:hover {
+        /* 滑鼠/觸控移上去的特效 */
+        .game-card:hover, .game-card:active {
             transform: translateY(-8px);
             box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
             border-color: #3498db;
@@ -74,7 +88,7 @@
             transition: transform 0.3s ease;
         }
 
-        .game-card:hover .game-icon {
+        .game-card:hover .game-icon, .game-card:active .game-icon {
             transform: scale(1.1);
         }
 
@@ -92,60 +106,54 @@
             line-height: 1.5;
         }
 
-        /* 特選遊戲特別標示 */
-        .featured {
-            border: 2px solid #f1c40f;
-            background: linear-gradient(to bottom right, #fff, #fffdf0);
-        }
-
     </style>
 </head>
 <body>
 
-    <h1>🎮 我的網頁遊戲合集</h1>
+    <h1>🎮 網頁遊戲合集</h1>
     <p class="subtitle">點擊下方卡片，立刻開始遊玩！</p>
 
     <div class="game-grid">
-        <!-- 遊戲 1 (Gemini版) -->
-        <a href="flappy-gemini.html" class="game-card featured">
+        <!-- 遊戲 1 -->
+        <a href="flappy-gemini.html" class="game-card">
             <div class="game-icon">🐦</div>
             <h2 class="game-title">小鳥避牆-Gemini版</h2>
-            <p class="game-desc">由 Gemini 協助開發，包含5階動態難度與多種重力選擇！</p>
+            <p class="game-desc">包含5階動態難度與多種重力選擇，挑戰你的反應極限！</p>
         </a>
 
-        <!-- 遊戲 2 (ChatGPT版) -->
-        <a href="flappy-chatgpt.html" class="game-card featured">
+        <!-- 遊戲 2 -->
+        <a href="flappy-chatgpt.html" class="game-card">
             <div class="game-icon">🐥</div>
             <h2 class="game-title">小鳥避牆-ChatGPT版</h2>
-            <p class="game-desc">由 ChatGPT 協助開發，來體驗看看不同 AI 生成的遊戲風格吧！</p>
+            <p class="game-desc">另一種風格的避牆挑戰，來體驗看看不同手感的差異吧。</p>
         </a>
 
-        <!-- 遊戲 3 (打磚塊遊戲) -->
-        <a href="game3.html" class="game-card featured">
+        <!-- 遊戲 3 -->
+        <a href="game3.html" class="game-card">
             <div class="game-icon">🎈</div>
             <h2 class="game-title">鳥頭打氣球</h2>
-            <p class="game-desc">從底部發射鳥頭！10關挑戰，引爆炸彈，挑戰極限。</p>
+            <p class="game-desc">從底部發射鳥頭！10關挑戰，引爆黑色炸彈產生連鎖反應。</p>
         </a>
 
         <!-- 遊戲 4 -->
-        <a href="game4.html" class="game-card featured">
+        <a href="game4.html" class="game-card">
             <div class="game-icon">🐍</div>
-            <h2 class="game-title">貪吃蛇 </h2>
-            <p class="game-desc">吃掉蘋果讓自己變長，小心不要咬到自己！</p>
+            <h2 class="game-title">貪吃蛇 - 奇幻森林</h2>
+            <p class="game-desc">吃蘋果變長，小心魔法藥水！支援滑動與十字鍵操作。</p>
         </a>
 
         <!-- 遊戲 5 -->
         <a href="game5.html" class="game-card">
             <div class="game-icon">🧩</div>
-            <h2 class="game-title">2048 (開發中)</h2>
-            <p class="game-desc">滑動方塊湊出 2048，挑戰你的大腦極限。</p>
+            <h2 class="game-title">2048 - 霓虹流光</h2>
+            <p class="game-desc">滑動合併方塊拼出 2048！卡關時隨時呼叫 AI 智能提示。</p>
         </a>
 
         <!-- 遊戲 6 -->
         <a href="game6.html" class="game-card">
             <div class="game-icon">👾</div>
-            <h2 class="game-title">太空侵略者 (開發中)</h2>
-            <p class="game-desc">駕駛戰機，消滅從天而降的外星敵人！</p>
+            <h2 class="game-title">太空侵略者</h2>
+            <p class="game-desc">動態星空背景，駕駛戰機消滅不斷進逼的外星大軍！</p>
         </a>
     </div>
 
