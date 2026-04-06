@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>太空侵略者 - 星際守護</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            touch-action: none; /* 防止滑動重整 */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+
+        .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            height: 100%;
+            padding: 10px;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            max-height: 70vh;
+            background-color: #000;
+            border: 4px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hud {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff;
+            z-index: 10;
+        }
+
+        .screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 25px;
+            border: 2px solid #0ff;
+            border-radius: 15px;
+            pointer-events: auto;
+            text-align: center;
+            box-shadow: 0 0 15px #0ff;
+            width: 80%;
+            backdrop-filter: blur(5px);
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            color: #fff;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        p {
+            font-size: 15px;
+            color: #ccc;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        button.action-btn {
+            padding: 12px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: transparent;
+            color: #0ff;
+            border: 2px solid #0ff;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5) inset, 0 0 10px rgba(0, 255, 255, 0.5);
+            transition: all 0.2s;
+        }
+
+        button.action-btn:active {
+            transform: scale(0.95);
+            background-color: rgba(0, 255, 255, 0.2);
+        }
+
+        .hidden { display: none !important; }
+
+        /* 手機控制面板 */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 15px 10px;
+            margin-top: auto;
+        }
+
+        .dir-btn, .fire-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid #555;
+            color: white;
+            font-size: 24px;
+            border-radius: 50%;
+            width: 65px;
+            height: 65px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 0 #333;
+            touch-action: manipulation;
+        }
+
+        .fire-btn {
+            background-color: rgba(255, 0, 0, 0.2);
+            border-color: #e74c3c;
+            box-shadow: 0 4px 0 #c0392b;
+            color: #ffaaaa;
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+        }
+
+        .dir-btn:active, .fire-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #333;
+        }
+        .fire-btn:active {
+            box-shadow: 0 0px 0 #c0392b;
+            background-color: rgba(255, 0, 0, 0.4);
+        }
+
+        .move-controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* 頂部導航 */
+        #home-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 14px;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+    </style>
+</head>
+<body>
+
+    <a href="index.html" id="home-btn">🏠 首頁</a>
+
+    <div class="main-wrapper">
+        <div id="game-container">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="ui-layer">
+                <div class="hud">
+                    <div>SCORE: <span id="ui-score">0</span></div>
+                    <div>LEVEL: <span id="ui-level">1</span></div>
+                    <div>LIVES: <span id="ui-lives">❤️❤️❤️</span></div>
+                </div>
+                
+                <!-- 狀態畫面 -->
+                <div id="message-screen" class="screen">
+                    <h1 id="msg-title">太空侵略者</h1>
+                    <p id="msg-desc">消滅所有外星人！<br>避免被擊中，保護地球。</p>
+                    <button id="action-btn" class="action-btn">開始發射</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 虛擬按鍵 -->
+        <div class="controls">
+            <div class="move-controls">
+                <div id="btn-left" class="dir-btn">◀</div>
+                <div id="btn-right" class="dir-btn">▶</div>
+            </div>
+            <div id="btn-fire" class="fire-btn">🔥</div>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const uiScore = document.getElementById('ui-score');
+    const uiLevel = document.getElementById('ui-level');
+    const uiLives = document.getElementById('ui-lives');
+    const msgScreen = document.getElementById('message-screen');
+    const msgTitle = document.getElementById('msg-title');
+    const msgDesc = document.getElementById('msg-desc');
+    const actionBtn = document.getElementById('action-btn');
+
+    // 遊戲狀態
+    let gameState = 'START'; // START, PLAYING, GAMEOVER, LEVELUP
+    let score = 0;
+    let level = 1;
+    let lives = 3;
+    let animationId;
+    
+    // 按鍵狀態
+    let keys = { left: false, right: false, fire: false };
+    let lastFireTime = 0;
+
+    // 實體陣列
+    let bullets = [];
+    let aliens = [];
+    let particles = [];
+    let stars = [];
+
+    // 玩家飛船設定
+    const player = {
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 40,
+        speed: 5,
+        color: '#00ff00',
+        emoji: '🚀'
+    };
+
+    // 外星人設定
+    let alienConfig = {
+        rows: 3,
+        cols: 6,
+        width: 35,
+        height: 35,
+        padding: 15,
+        offsetTop: 60,
+        offsetLeft: 30,
+        direction: 1, // 1: 右, -1: 左
+        speedX: 1,
+        speedY: 20
+    };
+
+    // 關卡背景配色設定
+    const levelBackgrounds = [
+        { bg: '#0B0C10', star: '#ffffff' }, // Lv1: 深淵黑
+        { bg: '#1A0B2E', star: '#e0b0ff' }, // Lv2: 紫色星雲
+        { bg: '#2E0B0B', star: '#ff9999' }, // Lv3: 猩紅宇宙
+        { bg: '#0B2E1A', star: '#99ff99' }, // Lv4: 幽綠深空
+        { bg: '#0A192F', star: '#64ffda' }, // Lv5: 賽博龐克藍
+    ];
+
+    // 初始化/調整 Canvas 大小
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        player.y = canvas.height - 60;
+        if(gameState === 'START') {
+            player.x = canvas.width / 2 - player.width / 2;
+            initStars();
+            draw();
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- 背景與星空特效 ---
+    function initStars() {
+        stars = [];
+        for (let i = 0; i < 50; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2 + 1,
+                speed: Math.random() * 2 + 0.5
+            });
+        }
+    }
+
+    function drawBackground() {
+        // 根據關卡更換背景
+        let bgConfig = levelBackgrounds[(level - 1) % levelBackgrounds.length];
+        
+        // 繪製底色
+        ctx.fillStyle = bgConfig.bg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 繪製與移動星星
+        ctx.fillStyle = bgConfig.star;
+        stars.forEach(star => {
+            if (gameState === 'PLAYING') star.y += star.speed + (level * 0.2); // 關卡越高星星越快
+            if (star.y > canvas.height) {
+                star.y = 0;
+                star.x = Math.random() * canvas.width;
+            }
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+            ctx.fill();
+        });
+    }
+
+    // --- 實體產生與邏輯 ---
+    function initAliens() {
+        aliens = [];
+        // 隨關卡增加難度 (行數、列數、速度)
+        alienConfig.rows = Math.min(3 + Math.floor(level / 2), 6);
+        alienConfig.cols = Math.min(5 + Math.floor(level / 3), 8);
+        alienConfig.speedX = 1 + (level * 0.3);
+        alienConfig.direction = 1;
+
+        const alienEmojis = ['👾', '👽', '🛸'];
+
+        // 置中計算
+        let totalWidth = alienConfig.cols * (alienConfig.width + alienConfig.padding) - alienConfig.padding;
+        alienConfig.offsetLeft = (canvas.width - totalWidth) / 2;
+
+        for (let r = 0; r < alienConfig.rows; r++) {
+            let emoji = alienEmojis[r % alienEmojis.length];
+            for (let c = 0; c < alienConfig.cols; c++) {
+                aliens.push({
+                    x: alienConfig.offsetLeft + c * (alienConfig.width + alienConfig.padding),
+                    y: alienConfig.offsetTop + r * (alienConfig.height + alienConfig.padding),
+                    width: alienConfig.width,
+                    height: alienConfig.height,
+                    status: 1,
+                    emoji: emoji,
+                    scoreValue: (alienConfig.rows - r) * 10 // 上層分數較高
+                });
+            }
+        }
+    }
+
+    function shoot(isPlayer, x, y) {
+        if (isPlayer) {
+            let now = Date.now();
+            if (now - lastFireTime > 250) { // 限制射速
+                bullets.push({ x: x + player.width/2 - 2, y: y, width: 4, height: 15, speed: -8, isPlayer: true, color: '#0ff' });
+                lastFireTime = now;
+            }
+        } else {
+            bullets.push({ x: x + alienConfig.width/2 - 2, y: y + alienConfig.height, width: 4, height: 15, speed: 4 + (level*0.5), isPlayer: false, color: '#ff0000' });
+        }
+    }
+
+    // 爆炸粒子特效
+    function createParticles(x, y, color) {
+        for (let i = 0; i < 8; i++) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                life: 1.0,
+                color: color
+            });
+        }
+    }
+
+    // --- 更新與渲染 ---
+    function update() {
+        if (gameState !== 'PLAYING') return;
+
+        // 玩家移動
+        if (keys.left && player.x > 0) player.x -= player.speed;
+        if (keys.right && player.x < canvas.width - player.width) player.x += player.speed;
+        if (keys.fire) shoot(true, player.x, player.y);
+
+        // 子彈移動
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            b.y += b.speed;
+            if (b.y < 0 || b.y > canvas.height) {
+                bullets.splice(i, 1);
+            }
+        }
+
+        // 外星人移動邏輯
+        let hitEdge = false;
+        let bottomMostAlienY = 0;
+        let activeAliens = 0;
+
+        aliens.forEach(a => {
+            if (a.status === 1) {
+                activeAliens++;
+                a.x += alienConfig.speedX * alienConfig.direction;
+                if (a.x + a.width > canvas.width - 10 || a.x < 10) hitEdge = true;
+                if (a.y > bottomMostAlienY) bottomMostAlienY = a.y;
+
+                // 外星人隨機開火 (關卡越高機率越大)
+                if (Math.random() < 0.001 + (level * 0.0005)) {
+                    shoot(false, a.x, a.y);
+                }
+            }
+        });
+
+        // 碰到邊緣往下移
+        if (hitEdge) {
+            alienConfig.direction *= -1;
+            aliens.forEach(a => {
+                if (a.status === 1) a.y += alienConfig.speedY;
+            });
+        }
+
+        // 檢查是否過關
+        if (activeAliens === 0) {
+            gameState = 'LEVELUP';
+            level++;
+            uiLevel.innerText = level;
+            setTimeout(() => {
+                initAliens();
+                bullets = [];
+                gameState = 'PLAYING';
+            }, 1500);
+        }
+
+        // 檢查外星人是否觸底
+        if (bottomMostAlienY + alienConfig.height >= player.y) {
+            loseLife();
+        }
+
+        // 碰撞偵測 (子彈 vs 實體)
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            
+            // 玩家子彈打外星人
+            if (b.isPlayer) {
+                for (let j = 0; j < aliens.length; j++) {
+                    let a = aliens[j];
+                    if (a.status === 1 && 
+                        b.x < a.x + a.width && b.x + b.width > a.x && 
+                        b.y < a.y + a.height && b.y + b.height > a.y) {
+                        
+                        a.status = 0;
+                        bullets.splice(i, 1);
+                        createParticles(a.x + a.width/2, a.y + a.height/2, '#0ff');
+                        
+                        score += a.scoreValue;
+                        uiScore.innerText = score;
+                        break;
+                    }
+                }
+            } 
+            // 外星人子彈打玩家
+            else {
+                if (b.x < player.x + player.width && b.x + b.width > player.x && 
+                    b.y < player.y + player.height && b.y + b.height > player.y) {
+                    bullets.splice(i, 1);
+                    loseLife();
+                    break;
+                }
+            }
+        }
+
+        // 更新粒子
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.05;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+    }
+
+    function loseLife() {
+        createParticles(player.x + player.width/2, player.y + player.height/2, '#ff0000');
+        lives--;
+        
+        let hearts = '';
+        for(let i=0; i<lives; i++) hearts += '❤️';
+        for(let i=lives; i<3; i++) hearts += '🖤';
+        uiLives.innerText = hearts;
+
+        if (lives <= 0) {
+            gameState = 'GAMEOVER';
+            msgTitle.innerText = '任務失敗';
+            msgTitle.style.color = '#ff0000';
+            msgDesc.innerText = `地球被佔領了...\n最終分數: ${score}\n存活關卡: ${level}`;
+            actionBtn.innerText = '重新部署';
+            msgScreen.classList.remove('hidden');
+        } else {
+            // 清除敵方子彈，稍微暫停給予喘息
+            bullets = bullets.filter(b => b.isPlayer); 
+            player.x = canvas.width / 2 - player.width / 2; // 重置位置
+        }
+    }
+
+    function draw() {
+        drawBackground();
+
+        if (gameState === 'LEVELUP') {
+            ctx.fillStyle = '#0ff';
+            ctx.font = 'bold 30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`LEVEL ${level}`, canvas.width/2, canvas.height/2);
+        }
+
+        // 畫玩家 (Emoji)
+        ctx.font = `${player.width}px Arial`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        if(gameState !== 'GAMEOVER' || particles.length > 0) {
+             ctx.fillText(player.emoji, player.x, player.y);
+        }
+
+        // 畫外星人
+        aliens.forEach(a => {
+            if (a.status === 1) {
+                ctx.font = `${a.width}px Arial`;
+                ctx.fillText(a.emoji, a.x, a.y);
+            }
+        });
+
+        // 畫子彈
+        bullets.forEach(b => {
+            ctx.fillStyle = b.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = b.color;
+            ctx.fillRect(b.x, b.y, b.width, b.height);
+            ctx.shadowBlur = 0; // 重置陰影
+        });
+
+        // 畫粒子
+        particles.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- 遊戲控制 ---
+    function startGame() {
+        score = 0;
+        level = 1;
+        lives = 3;
+        uiScore.innerText = score;
+        uiLevel.innerText = level;
+        uiLives.innerText = '❤️❤️❤️';
+        msgTitle.style.color = '#fff';
+        player.x = canvas.width / 2 - player.width / 2;
+        bullets = [];
+        particles = [];
+        
+        initStars();
+        initAliens();
+        
+        gameState = 'PLAYING';
+        msgScreen.classList.add('hidden');
+    }
+
+    // 鍵盤事件
+    window.addEventListener('keydown', e => {
+        if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+        if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+        if (e.key === ' ' || e.key === 'Spacebar') keys.fire = true;
+    });
+
+    window.addEventListener('keyup', e => {
+        if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+        if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+        if (e.key === ' ' || e.key === 'Spacebar') keys.fire = false;
+    });
+
+    // 觸控/滑鼠虛擬按鍵事件
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnFire = document.getElementById('btn-fire');
+
+    // 左鍵
+    btnLeft.addEventListener('touchstart', (e)=>{ e.preventDefault(); keys.left = true; });
+    btnLeft.addEventListener('touchend', (e)=>{ e.preventDefault(); keys.left = false; });
+    btnLeft.addEventListener('mousedown', ()=>{ keys.left = true; });
+    window.addEventListener('mouseup', ()=>{ keys.left = false; keys.right = false; keys.fire = false; });
+
+    // 右鍵
+    btnRight.addEventListener('touchstart', (e)=>{ e.preventDefault(); keys.right = true; });
+    btnRight.addEventListener('touchend', (e)=>{ e.preventDefault(); keys.right = false; });
+    btnRight.addEventListener('mousedown', ()=>{ keys.right = true; });
+
+    // 發射鍵
+    btnFire.addEventListener('touchstart', (e)=>{ e.preventDefault(); keys.fire = true; });
+    btnFire.addEventListener('touchend', (e)=>{ e.preventDefault(); keys.fire = false; });
+    btnFire.addEventListener('mousedown', ()=>{ keys.fire = true; });
+
+    actionBtn.addEventListener('click', startGame);
+
+    // 初始設定
+    resizeCanvas();
+    gameLoop();
+
+</script>
+</body>
+</html>
